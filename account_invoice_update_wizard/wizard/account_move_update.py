@@ -180,6 +180,13 @@ class AccountMoveUpdate(models.TransientModel):
                 for line in lines:
                     line.date_maturity = new_pterm[iamount].pop()
 
+    def _get_move_lines(self, move_id):
+        self.ensure_one()
+        return move_id.line_ids.filtered(
+            # we are only interested in invoice lines, not tax lines
+            lambda rec: bool(rec.product_id)
+        )
+
     def run(self):
         self.ensure_one()
         inv = self.invoice_id
@@ -191,10 +198,8 @@ class AccountMoveUpdate(models.TransientModel):
             updated = True
             inv.write(ivals)
         if inv:
-            for ml in inv.line_ids.filtered(
-                    # we are only interested in invoice lines, not tax lines
-                    lambda rec: bool(rec.product_id)
-            ):
+            move_line_ids = self._get_move_lines(inv)
+            for ml in move_line_ids:
                 if ml.credit == 0.0:
                     continue
                 analytic_account = ml.analytic_account_id
